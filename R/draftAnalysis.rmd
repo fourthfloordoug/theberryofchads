@@ -1,0 +1,115 @@
+---
+title: "Chadsberry Analysis"
+author: "Doug R"
+date: "July 18, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=FALSe, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(tibble)
+require(dplyr)
+require(magrittr)
+require(ggplot2)
+require(lubridate)
+require(tidyr)
+
+```
+
+# DRAFT Chadsberry Financial Analysis DRAFT
+
+This document describes the historical spending and income of Chadsberry.  It will examine long term trends as well as attempt to model future spending.  It is motivated by the question of where to set our dues going forward.
+
+This document was created on `r date()`.
+
+## Basic Data
+
+We possess 11 years of financial data for the organization.  This includes part of Paul's term as well as all of mine.  There are some basic summary numbers that go back to 2000, but there is no detail, so I will not attempt to include this data in the analysis.  The data has been kept in excel forms for each year, which have been provided to the auditor.  In this analysis the data has been combined. 
+
+
+```{r, echo=FALSE, message=FALSE}
+data <- read.csv("C:/Users/jessa/Documents/workspace/theberryofchads/data/allYears.csv")
+
+numberOfEntries = nrow(data)
+
+data %<>% unite(col="dateString",Year,Month,Day,sep=",",remove=FALSE) %<>% mutate(dateObject = ymd(dateString))
+
+data %<>% mutate(Type = ifelse(Transaction=="Credit","Income","Expense"))
+
+```
+
+
+## Plots
+
+```{r echo=FALSE}
+
+totalPerYear <- data %>% filter(Account=="Checking") %>% group_by(Year,Type) %>% summarise(total=sum(Amount))
+
+totalPerYear %>% ggplot(aes(x=Year,y=total,fill=Type)) + geom_bar(stat="identity",position=position_dodge())
+
+totalPerYear %>% ggplot(aes(x=Year,y=total,color=Type)) + geom_line() + geom_point()
+
+```   
+
+But this includes transfers to reserves as spending
+
+```{r echo=FALSE}
+
+expenseByYearNoTransfers <- data %>% filter(Account=="Checking",!Category %in% c("To Reserves","From Reserves")) %>% group_by(Year,Type) %>% summarise(total=sum(Amount))
+
+expenseByYearNoTransfers %>% ggplot(aes(x=Year,y=total,fill=Type)) + geom_bar(stat="identity",position=position_dodge())
+
+expenseByYearNoTransfers %>% ggplot(aes(x=Year,y=total,color=Type)) + geom_line() + geom_point()
+
+```
+
+text
+
+```{r echo=FALSE}
+
+expenseByYearNoTransfers %<>% mutate(absolute = ifelse(Type=="Expense",total*(-1),total)) 
+
+posNegCashFlow <- expenseByYearNoTransfers %>% group_by(Year) %>% summarise(Balance = sum(absolute))
+
+posNegCashFlow %>% ggplot(aes(x=Year,y=Balance)) + geom_bar(stat="identity")
+
+```
+
+text
+
+```{r echo=FALSE}
+
+aboveBelow <- posNegCashFlow %>% count(Balance > 0) 
+
+aboveBelow %>% ggplot(aes(x=`Balance > 0`,y=n)) + geom_bar(stat="identity")
+
+```
+
+text
+
+```{r echo=FALSE}
+
+lastThreeYearsData <- data %>% filter(Year >=  2016,Account=="Checking",Type=="Expense") %>% mutate(Year = as.factor(Year))
+
+threeYearsCatSum <- lastThreeYearsData %>% group_by(Category,Year) %>% summarise(catTotal=sum(Amount)) 
+
+threeYearsCatSum %>% ggplot(aes(x=Category,y=catTotal,fill=Year)) + geom_bar(stat="identity",position=position_dodge())
+
+threeYearsCatSum %>%ggplot(aes(x=Category,y=catTotal,color=Year)) + geom_point() 
+# write.csv(threeYearsCatSum,"C:/Users/jessa/Documents/workspace/theberryofchads/data/threYearCatSum.csv")
+
+```
+
+
+text
+
+```{r echo=FALSE}
+
+data %>% filter(Category=="Snow") %>% group_by(Year) %>% summarise(totalSnow = sum(Amount)) %>% ggplot(aes(x=Year,y=totalSnow)) + geom_point() + geom_line()
+
+
+data %>% filter(Category=="Snow") %>% group_by(Year) %>% summarise(totalSnow = sum(Amount))
+
+```
+

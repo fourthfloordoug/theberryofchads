@@ -1,0 +1,92 @@
+Historical Chadsberry Financial Information
+========================================================
+author: D. Ratay
+date: 9 Aug 2018
+autosize: true
+
+First Slide
+========================================================
+
+-Have records back to 2007.
+
+-Before that is largely lost to time
+
+```{r echo=FALSE}
+
+require(tibble)
+require(dplyr)
+require(magrittr)
+require(ggplot2)
+require(lubridate)
+require(tidyr)
+
+data <- read.csv("C:/Users/jessa/Documents/workspace/theberryofchads/data/allYears.csv")
+
+numberOfEntries = nrow(data)
+
+data %<>% unite(col="dateString",Year,Month,Day,sep=",",remove=FALSE) %<>% mutate(dateObject = ymd(dateString))
+
+data %<>% mutate(Type = ifelse(Transaction=="Credit","Income","Expense"))
+
+```
+
+Expenses and Income by Year
+========================================================
+
+```{r echo=FALSE}
+
+expenseByYearNoTransfers <- data %>% filter(Account=="Checking",!Category %in% c("To Reserves","From Reserves")) %>% group_by(Year,Type) %>% summarise(total=sum(Amount))
+
+expenseByYearNoTransfers %>% ggplot(aes(x=Year,y=total,fill=Type)) + geom_bar(stat="identity",position=position_dodge())
+
+expenseByYearNoTransfers %>% ggplot(aes(x=Year,y=total,color=Type)) + geom_line() + geom_point()
+
+```
+
+Cash Flow
+========================================================
+
+```{r, echo=FALSE}
+
+expenseByYearNoTransfers %<>% mutate(absolute = ifelse(Type=="Expense",total*(-1),total)) 
+
+posNegCashFlow <- expenseByYearNoTransfers %>% group_by(Year) %>% summarise(Balance = sum(absolute))
+
+posNegCashFlow %>% ggplot(aes(x=Year,y=Balance)) + geom_bar(stat="identity")
+
+```
+
+Summary of Years
+===
+```{r echo=FALSE}
+
+aboveBelow <- posNegCashFlow %>% count(Balance > 0) 
+
+aboveBelow %>% ggplot(aes(x=`Balance > 0`,y=n)) + geom_bar(stat="identity")
+
+
+```
+
+
+Expenses by Type
+===
+```{r echo=FALSE}
+
+lastThreeYearsData <- data %>% filter(Year >=  2016,Account=="Checking",Type=="Expense") %>% mutate(Year = as.factor(Year))
+
+threeYearsCatSum <- lastThreeYearsData %>% group_by(Category,Year) %>% summarise(catTotal=sum(Amount)) 
+
+threeYearsCatSum %>% ggplot(aes(x=Category,y=catTotal,fill=Year)) + geom_bar(stat="identity",position=position_dodge())
+
+threeYearsCatSum %>% ggplot(aes(x=Category,y=catTotal,color=Year)) + geom_point() 
+# write.csv(threeYearsCatSum,"C:/Users/jessa/Documents/workspace/theberryofchads/data/threYearCatSum.csv")
+
+```
+
+Historical Snow Spending
+===
+```{r echo=FALSE}
+
+data %>% filter(Category=="Snow") %>% group_by(Year) %>% summarise(totalSnow = sum(Amount)) %>% ggplot(aes(x=Year,y=totalSnow)) + geom_point() + geom_line()
+
+```
